@@ -1,4 +1,4 @@
-// Generate launcher icons (mipmap-*) for 有数 without any image library:
+// Generate launcher icons (mipmap-*) for xCalc without any image library:
 // software rasterizer (4x supersampled) + raw PNG encoder (node:zlib).
 'use strict';
 const fs = require('fs');

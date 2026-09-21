@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
             Intent send = new Intent(Intent.ACTION_SEND);
             send.setType("text/plain");
             send.putExtra(Intent.EXTRA_TEXT, text);
-            startActivity(Intent.createChooser(send, "分享有数数据"));
+            startActivity(Intent.createChooser(send, "分享 xCalc 数据"));
         }
 
         @JavascriptInterface

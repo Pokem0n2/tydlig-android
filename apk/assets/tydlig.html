@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F6F5F1">
-<title>有数</title>
+<title>xCalc</title>
 <style>
   :root {
     --paper: #F6F5F1;
@@ -285,7 +285,7 @@
 <canvas id="canvas"></canvas>
 
 <header id="topbar">
-  <div class="title">有数</div>
+  <div class="title">xCalc</div>
   <div class="actions" id="topbar-actions">
     <button class="icon-btn" id="btn-undo" title="撤销" aria-label="撤销">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
@@ -321,12 +321,12 @@
 
 <div id="menu">
   <div class="panel">
-    <div class="sheet-title">有数 <span id="menu-version"></span></div>
+    <div class="sheet-title">xCalc <span id="menu-version"></span></div>
     <button class="sheet-row" id="mn-export">导出画布…</button>
     <button class="sheet-row" id="mn-import">导入画布…</button>
     <button class="sheet-row" id="mn-clear">清空画布</button>
     <button class="sheet-row" id="mn-help">使用帮助</button>
-    <button class="sheet-row" id="mn-about">关于有数</button>
+    <button class="sheet-row" id="mn-about">关于 xCalc</button>
   </div>
   <button class="sheet-cancel" id="mn-cancel">取消</button>
 </div>
@@ -364,7 +364,7 @@
 
 <div id="onboard">
   <div class="card">
-    <h1>有数</h1>
+    <h1>xCalc</h1>
     <div class="sub">画布计算器</div>
     <ol>
       <li><span class="no">1</span><span>点键盘，把数字放到画布上</span></li>
@@ -425,11 +425,11 @@
 <script>
 'use strict';
 /* ======================================================================
- *  有数 Tydlig-style canvas calculator  ·  v0.0.1
+ *  xCalc - Tydlig-style canvas calculator  ·  v0.0.1
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.4.0';
+const VERSION = 'v0.4.1';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -1161,8 +1161,8 @@ document.getElementById('mn-help').addEventListener('click', () => {
   `);
 });
 document.getElementById('mn-about').addEventListener('click', () => {
-  showInfo('关于有数', `
-    <b>有数</b> <span class="dim">${VERSION}</span><br>
+  showInfo('关于 xCalc', `
+    <b>xCalc</b> <span class="dim">${VERSION}</span><br>
     一个画布计算器：数字摆在无限画布上，运算符把它们连起来，结果实时联动。<br><br>
     灵感来自 iOS 应用《有数》(Tydlig)。本项目为独立的仿制实现，与原作者无关。<br><br>
     <span class="dim">Pokem0n2 · github.com/Pokem0n2/tydlig-android<br>

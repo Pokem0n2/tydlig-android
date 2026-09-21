@@ -1,4 +1,4 @@
-# 有数 tydlig-android
+# xCalc（tydlig-android）
 
 仿 iOS 画布计算器《有数》（Tydlig）的 Android 应用。数字像卡片一样摆在无限画布上，
 用运算符把它们连起来，结果实时联动更新——改任何一个输入，下游所有结果立刻重算。
