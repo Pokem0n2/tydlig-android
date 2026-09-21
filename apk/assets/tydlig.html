@@ -167,29 +167,35 @@
     transition: transform .24s cubic-bezier(.32,.72,.35,1);
   }
   #sheet.show { transform: translateY(0); }
-  #sheet .panel {
+  .panel {
+    position: relative;
     background: var(--panel-bg);
     -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
     border-radius: 16px; overflow: hidden;
   }
-  #sheet .sheet-title {
-    text-align: center; font-size: 12px; color: var(--text-2);
-    padding: 10px 0 8px; border-bottom: 0.5px solid var(--hairline);
+  .sheet-title {
+    position: relative;
+    text-align: left; font-size: 15px; font-weight: 600; color: var(--text);
+    padding: 13px 46px 11px 16px;
+    border-bottom: 0.5px solid var(--hairline);
   }
-  #sheet .sheet-row {
+  .sheet-close {
+    position: absolute; top: 14px; right: 10px; z-index: 2;
+    width: 26px; height: 26px; border: none; border-radius: 50%;
+    background: rgba(120,120,128,.16); color: var(--text-2);
+    font-size: 12px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit;
+  }
+  .sheet-close:active { background: rgba(120,120,128,.32); color: var(--text); }
+  .sheet-row {
     display: block; width: 100%; border: none; background: transparent;
     font-family: inherit; font-size: 17px; color: var(--accent);
     padding: 14px 0; text-align: center; cursor: pointer;
     border-bottom: 0.5px solid var(--hairline);
   }
-  #sheet .sheet-row:active { background: rgba(120,120,128,.14); }
-  #sheet .sheet-row.danger { color: var(--danger); }
-  #sheet .sheet-cancel {
-    display: block; width: 100%; margin-top: 8px; border: none;
-    background: var(--card-bg); font-family: inherit; font-size: 17px; font-weight: 600;
-    color: var(--accent); padding: 15px 0; border-radius: 16px; cursor: pointer;
-  }
-  #sheet .sheet-cancel:active { background: var(--key-bg-active); }
+  .sheet-row:active { background: rgba(120,120,128,.14); }
+  .sheet-row.danger, .sheet-row.destructive { color: var(--danger); }
   /* ── 主菜单 / 信息面板 / 确认框 / 导入框 ── */
   #menu, #info {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
@@ -198,21 +204,8 @@
     transition: transform .24s cubic-bezier(.32,.72,.35,1);
   }
   #menu.show, #info.show { transform: translateY(0); }
-  #menu .panel, #info .panel {
-    background: var(--panel-bg);
-    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-    border-radius: 16px; overflow: hidden;
-  }
-  #menu .sheet-row {
-    display: block; width: 100%; border: none; background: transparent;
-    font-family: inherit; font-size: 17px; color: var(--accent);
-    padding: 13px 0; text-align: center; cursor: pointer;
-    border-bottom: 0.5px solid var(--hairline);
-  }
-  #menu .sheet-row:active { background: rgba(120,120,128,.14); }
-  #menu .sheet-row.destructive { color: var(--danger); }
   #info .info-body {
-    padding: 12px 18px 16px; font-size: 13.5px; line-height: 1.65;
+    padding: 12px 16px 16px; font-size: 13.5px; line-height: 1.65;
     color: var(--text); max-height: 46vh; overflow-y: auto;
   }
   #info .info-body b { font-weight: 700; }
@@ -225,10 +218,11 @@
   }
   #confirm-box.show, #import-box.show { opacity: 1; pointer-events: auto; }
   #confirm-box .card, #import-box .card {
-    background: var(--card-bg); border-radius: 16px; padding: 20px 18px 14px;
+    position: relative;
+    background: var(--card-bg); border-radius: 16px; padding: 18px 18px 14px;
     max-width: 320px; width: 100%; box-shadow: 0 18px 50px rgba(0,0,0,.22);
   }
-  .confirm-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+  .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; text-align: center; color: var(--text); padding: 0 34px; }
   .confirm-msg { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-bottom: 16px; text-align: center; }
   .confirm-btns { display: flex; gap: 10px; }
   .confirm-btns button {
@@ -312,39 +306,39 @@
 <div id="sheet">
   <div class="panel">
     <div class="sheet-title" id="sheet-title">数字</div>
+    <button class="sheet-close" id="sh-x">✕</button>
     <button class="sheet-row" id="sh-copy">复制数值</button>
     <button class="sheet-row" id="sh-unlink">断开连接</button>
     <button class="sheet-row danger" id="sh-delete">删除</button>
   </div>
-  <button class="sheet-cancel" id="sh-cancel">取消</button>
 </div>
 
 <div id="menu">
   <div class="panel">
     <div class="sheet-title">xCalc <span id="menu-version"></span></div>
+    <button class="sheet-close" id="menu-x">✕</button>
     <button class="sheet-row" id="mn-export">导出画布…</button>
     <button class="sheet-row" id="mn-import">导入画布…</button>
     <button class="sheet-row" id="mn-clear">清空画布</button>
     <button class="sheet-row" id="mn-help">使用帮助</button>
     <button class="sheet-row" id="mn-about">关于 xCalc</button>
   </div>
-  <button class="sheet-cancel" id="mn-cancel">取消</button>
 </div>
 
 <div id="info">
   <div class="panel">
     <div class="sheet-title" id="info-title"></div>
+    <button class="sheet-close" id="info-x">✕</button>
     <div class="info-body" id="info-body"></div>
   </div>
-  <button class="sheet-cancel" id="info-close">关闭</button>
 </div>
 
 <div id="confirm-box">
   <div class="card">
     <div class="confirm-title" id="confirm-title">确认操作</div>
+    <button class="sheet-close" id="confirm-x">✕</button>
     <div class="confirm-msg" id="confirm-msg"></div>
     <div class="confirm-btns">
-      <button id="confirm-no">取消</button>
       <button id="confirm-yes" class="danger">清空</button>
     </div>
   </div>
@@ -353,10 +347,10 @@
 <div id="import-box">
   <div class="card">
     <div class="confirm-title">导入画布</div>
+    <button class="sheet-close" id="import-x">✕</button>
     <div class="confirm-msg">粘贴之前导出的画布数据（JSON）。导入会替换当前画布，可通过撤销恢复。</div>
     <textarea id="import-text" rows="6" spellcheck="false" placeholder='{"app":"tydlig","nodes":[…]}'></textarea>
     <div class="confirm-btns">
-      <button id="import-no">取消</button>
       <button id="import-yes">导入</button>
     </div>
   </div>
@@ -450,6 +444,7 @@ const THEME_LIGHT = {
   ring: 'rgba(10,132,255,.95)',
   ringSoft: 'rgba(10,132,255,.35)',
   ghost: 'rgba(60,60,67,.35)',
+  hint2: 'rgba(60,60,67,.38)',
 };
 const THEME_DARK = {
   paper: '#1C1C1E',
@@ -463,6 +458,7 @@ const THEME_DARK = {
   ring: 'rgba(10,132,255,.95)',
   ringSoft: 'rgba(10,132,255,.4)',
   ghost: 'rgba(235,235,245,.35)',
+  hint2: 'rgba(235,235,245,.32)',
 };
 let COLORS = THEME_LIGHT;
 const themeMq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -677,28 +673,47 @@ function displayText(n) {
   }
   return fmtNum(n.value);
 }
-function textBounds(n) {          // 紧贴文字内容的包围盒（线框/引线锚定用）
+function textInk(font, text) {    // 文字真实墨迹（非 em 盒），用于紧贴的线框
+  ctx.font = font;
+  const m = ctx.measureText(text === '' ? '0' : text);
+  const px = parseFloat(font.match(/ (\d+(?:\.\d+)?)px/)[1]) || 12;
+  // middle 对齐时 alphabetic 基线相对 em 中点的偏移；老内核无 fontBoundingBox 时用启发式
+  const fbA = m.fontBoundingBoxAscent ?? px * 0.88, fbD = m.fontBoundingBoxDescent ?? px * 0.22;
+  const mid = (fbA - fbD) / 2;
+  return { w: m.width,
+           top: mid - (m.actualBoundingBoxAscent ?? px * 0.72),
+           bottom: mid + (m.actualBoundingBoxDescent ?? 0) };
+}
+function textBounds(n) {          // 紧贴墨迹的包围盒（线框/引线锚定用）
   const label = n.kind === 'res' ? exprLabel(n) : null;
   const text = displayText(n);
   const f = nodeFont(n);
   const px = parseFloat(f.match(/ (\d+(?:\.\d+)?)px/)[1]);
-  let w = measure(text, f);
-  if (label) w = Math.max(w, measure(label, `400 12px ${FONT_STACK}`));
-  const h = px + (label ? 16 : 0);
-  return { x: n.x, y: n.y, w, h, labelH: label ? 16 : 0, px };
+  const v = textInk(f, text);
+  const valueY = n.y + (label ? 8 : 0);
+  let top = valueY + v.top, bottom = valueY + v.bottom, w = v.w;
+  if (label) {
+    const l = textInk(`400 12px ${FONT_STACK}`, label);
+    const labelY = n.y - px / 2;
+    top = Math.min(top, labelY + l.top);
+    bottom = Math.max(bottom, labelY + l.bottom);
+    w = Math.max(w, l.w);
+  }
+  return { x: n.x, y: (top + bottom) / 2, w, h: Math.max(bottom - top, 4),
+           labelH: label ? 16 : 0, px };
 }
 function nodeBounds(n) {          // 命中检测用（留呼吸边距，隐形热区）
   const b = textBounds(n);
   return { x: b.x, y: b.y, w: b.w + NODE_PAD * 2, h: b.h + NODE_PAD * 2, labelH: b.labelH, px: b.px };
 }
 const RING_MARGIN = 1;            // 线框/引线与文字的边距（世界坐标，随缩放）
-function edgePoint(n, tx, ty) {   // 从节点文字边缘指向 (tx,ty)，落在 1px 线框上
+function edgePoint(n, tx, ty) {   // 从文字盒边缘指向 (tx,ty)，落在 1px 线框上
   const b = textBounds(n);
-  const dx = tx - n.x, dy = ty - n.y;
-  if (dx === 0 && dy === 0) return { x: n.x, y: n.y };
+  const dx = tx - b.x, dy = ty - b.y;
+  if (dx === 0 && dy === 0) return { x: b.x, y: b.y };
   const hw = b.w / 2 + RING_MARGIN, hh = b.h / 2 + RING_MARGIN;
   const t = Math.min(hw / Math.abs(dx || 1e-9), hh / Math.abs(dy || 1e-9));
-  return { x: n.x + dx * t, y: n.y + dy * t };
+  return { x: b.x + dx * t, y: b.y + dy * t };
 }
 function exprLabel(n) {
   const a = byId(n.a), b = n.b !== null ? byId(n.b) : null;
@@ -1000,8 +1015,7 @@ shUnlink.addEventListener('click', () => {
   closeSheet();
 });
 document.getElementById('sh-delete').addEventListener('click', () => { closeSheet(); deleteSelection(); });
-document.getElementById('sh-cancel').addEventListener('click', closeSheet);
-sheetBackdrop.addEventListener('click', closeSheet);
+sheetBackdrop.addEventListener('click', () => { closeSheet(); closeAllPanels(); });
 
 /* ── 首次引导 ── */
 const onboardEl = document.getElementById('onboard');
@@ -1037,9 +1051,17 @@ function closeAllPanels() {
   sheetEl.classList.remove('show');
   sheetBackdrop.classList.remove('show');
 }
+function closeEverything() { closeSheet(); closeAllPanels(); }
+// 浮窗右上角 ✕
+document.getElementById('sh-x').addEventListener('click', closeSheet);
+for (const id of ['menu-x', 'info-x', 'confirm-x', 'import-x']) {
+  document.getElementById(id).addEventListener('click', closeAllPanels);
+}
+// 点击浮窗外区域（模态卡片自身的暗背景）等效关闭
+for (const el of [confirmEl, importEl]) {
+  el.addEventListener('click', e => { if (e.target === el) closeAllPanels(); });
+}
 document.getElementById('btn-menu').addEventListener('click', () => openPanel(menuEl));
-document.getElementById('mn-cancel').addEventListener('click', closeAllPanels);
-document.getElementById('info-close').addEventListener('click', closeAllPanels);
 
 function showInfo(title, html) {
   document.getElementById('info-title').textContent = title;
@@ -1057,7 +1079,6 @@ function showConfirm(title, msg, yesLabel, onYes, danger) {
   confirmYesCb = onYes;
   openPanel(confirmEl);
 }
-document.getElementById('confirm-no').addEventListener('click', closeAllPanels);
 document.getElementById('confirm-yes').addEventListener('click', () => {
   const cb = confirmYesCb; confirmYesCb = null;
   closeAllPanels();
@@ -1082,7 +1103,6 @@ document.getElementById('mn-import').addEventListener('click', () => {
   document.getElementById('import-text').value = '';
   openPanel(importEl);
 });
-document.getElementById('import-no').addEventListener('click', closeAllPanels);
 document.getElementById('import-yes').addEventListener('click', () => {
   const txt = document.getElementById('import-text').value;
   const err = importCanvas(txt);
@@ -1331,7 +1351,7 @@ window.addEventListener('keydown', e => {
   if (K === 'Delete') { deleteSelection(); return; }
   if (/^[0-9.]$/.test(K)) onKey(K);
   else if (K === 'Backspace') onKey('back');
-  else if (K === 'Escape') onKey('clear');
+  else if (K === 'Escape') closeEverything();
   else if (K === 'Enter') onKey('enter');
   else if (K === '+') onKey('+');
   else if (K === '-') onKey('-');
@@ -1394,13 +1414,14 @@ function drawNode(n, t) {
   const label = n.kind === 'res' ? exprLabel(n) : null;
   const text = displayText(n);
   const f = nodeFont(n);
-  const valueY = n.y + (label ? b.labelH / 2 : 0);
+  const valueY = n.y + (label ? 8 : 0);
+  const labelY = n.y - b.px / 2;
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (label) {
     ctx.font = `400 12px ${FONT_STACK}`;
     ctx.fillStyle = COLORS.label;
-    ctx.fillText(label, n.x, n.y - b.h / 2 + b.labelH / 2);
+    ctx.fillText(label, n.x, labelY);
   }
   if (n.kind === 'num' && n.value === null && !isEditing) {
     return; // 空节点不显示（提交前由编辑态渲染）
@@ -1465,7 +1486,7 @@ function render(t) {
     ctx.font = `400 16px ${FONT_STACK}`;
     ctx.fillText('点按键盘，把数字放到画布上', W / 2, H * 0.40);
     ctx.font = `400 13px ${FONT_STACK}`;
-    ctx.fillStyle = 'rgba(60,60,67,.28)';
+    ctx.fillStyle = COLORS.hint2;
     ctx.fillText('选中数字后点运算符，再点另一个数字，结果会实时联动', W / 2, H * 0.40 + 26);
   }
 
@@ -1483,6 +1504,7 @@ window.__TYDLIG_TEST__ = {
     };
   },
   fmt: fmtNum,
+  bounds(id) { const n = byId(id); return n ? textBounds(n) : null; },
   key: onKey,
   undo, redo, fitView, deleteSelection,
   openSheet, closeSheet, closeOnboard, showOnboard,
