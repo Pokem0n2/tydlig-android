@@ -423,7 +423,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.4.4';
+const VERSION = 'v0.4.5';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -475,7 +475,7 @@ applyTheme();
 const cv = document.getElementById('canvas');
 const ctx = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1;
-const cam = { cx: 0, cy: 0, s: 1 };          // screen = (world - c) * s + viewport/2
+const cam = { cx: 0, cy: 0, s: 0.35 };       // 默认缩到最小；screen = (world - c) * s + viewport/2
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 3);
@@ -704,7 +704,7 @@ function nodeBounds(n) {          // 命中检测用（留呼吸边距，隐形�
   const b = textBounds(n);
   return { x: b.x, y: b.y, w: b.w + NODE_PAD * 2, h: b.h + NODE_PAD * 2, labelH: b.labelH, px: b.px };
 }
-const RING_MARGIN = 1;            // 线框/引线与文字的边距（世界坐标，随缩放）
+const RING_MARGIN = 3;            // 线框/引线与文字的边距（世界坐标，随缩放）
 function edgePoint(n, tx, ty) {   // 从文字盒边缘指向 (tx,ty)，落在 1px 线框上
   const b = textBounds(n);
   const dx = tx - b.x, dy = ty - b.y;
