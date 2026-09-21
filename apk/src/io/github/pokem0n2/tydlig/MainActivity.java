@@ -44,9 +44,12 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         final String req = "window.__tydligBack ? window.__tydligBack() : false";
-        webView.evaluateJavascript(req, result -> {
-            if (!"true".equals(result)) {
-                finish();
+        webView.evaluateJavascript(req, new android.webkit.ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String result) {
+                if (!"true".equals(result)) {
+                    finish();
+                }
             }
         });
     }
@@ -63,7 +66,12 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void toast(final String msg) {
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show());
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                }
+            });
         }
     }
 }
