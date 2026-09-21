@@ -423,7 +423,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.4.3';
+const VERSION = 'v0.4.4';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -1427,8 +1427,8 @@ function drawNode(n, t) {
     return; // 空节点不显示（提交前由编辑态渲染）
   }
   ctx.font = f;
+  // 编辑态保持正常文字色（避免与蓝色线框同色相融），编辑意图由蓝色光标表达
   let color = n.kind === 'res' ? (n.value === null ? COLORS.resError : COLORS.res) : COLORS.num;
-  if (isEditing) color = COLORS.numEditing;
   ctx.fillStyle = color;
   if (text === '' && isEditing) {
     // 光标
