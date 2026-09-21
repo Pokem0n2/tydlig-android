@@ -180,7 +180,7 @@
     border-bottom: 0.5px solid var(--hairline);
   }
   .sheet-close {
-    position: absolute; top: 14px; right: 10px; z-index: 2;
+    position: absolute; top: 12px; right: 10px; z-index: 2;
     width: 26px; height: 26px; border: none; border-radius: 50%;
     background: rgba(120,120,128,.16); color: var(--text-2);
     font-size: 12px; line-height: 1; cursor: pointer;
@@ -222,7 +222,7 @@
     background: var(--card-bg); border-radius: 16px; padding: 18px 18px 14px;
     max-width: 320px; width: 100%; box-shadow: 0 18px 50px rgba(0,0,0,.22);
   }
-  .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; text-align: center; color: var(--text); padding: 0 34px; }
+  .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 11px; text-align: center; color: var(--text); padding: 0 34px; }
   .confirm-msg { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-bottom: 16px; text-align: center; }
   .confirm-btns { display: flex; gap: 10px; }
   .confirm-btns button {
@@ -423,7 +423,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.4.1';
+const VERSION = 'v0.4.3';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -444,7 +444,7 @@ const THEME_LIGHT = {
   ring: 'rgba(10,132,255,.95)',
   ringSoft: 'rgba(10,132,255,.35)',
   ghost: 'rgba(60,60,67,.35)',
-  hint2: 'rgba(60,60,67,.38)',
+  hint2: 'rgba(60,60,67,.33)',
 };
 const THEME_DARK = {
   paper: '#1C1C1E',
@@ -458,7 +458,7 @@ const THEME_DARK = {
   ring: 'rgba(10,132,255,.95)',
   ringSoft: 'rgba(10,132,255,.4)',
   ghost: 'rgba(235,235,245,.35)',
-  hint2: 'rgba(235,235,245,.32)',
+  hint2: 'rgba(235,235,245,.30)',
 };
 let COLORS = THEME_LIGHT;
 const themeMq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -673,34 +673,32 @@ function displayText(n) {
   }
   return fmtNum(n.value);
 }
-function textInk(font, text) {    // 文字真实墨迹（非 em 盒），用于紧贴的线框
+function textInk(font, text) {    // 相对 alphabetic 基线的真实墨迹（精确、与字体度量无关）
   ctx.font = font;
   const m = ctx.measureText(text === '' ? '0' : text);
   const px = parseFloat(font.match(/ (\d+(?:\.\d+)?)px/)[1]) || 12;
-  // middle 对齐时 alphabetic 基线相对 em 中点的偏移；老内核无 fontBoundingBox 时用启发式
-  const fbA = m.fontBoundingBoxAscent ?? px * 0.88, fbD = m.fontBoundingBoxDescent ?? px * 0.22;
-  const mid = (fbA - fbD) / 2;
   return { w: m.width,
-           top: mid - (m.actualBoundingBoxAscent ?? px * 0.72),
-           bottom: mid + (m.actualBoundingBoxDescent ?? 0) };
+           asc: m.actualBoundingBoxAscent ?? px * 0.72,
+           desc: m.actualBoundingBoxDescent ?? 0 };
 }
-function textBounds(n) {          // 紧贴墨迹的包围盒（线框/引线锚定用）
+function textBounds(n) {          // 盒中心 = 墨迹中心；数字绘制时对齐到此（见 drawNode）
   const label = n.kind === 'res' ? exprLabel(n) : null;
   const text = displayText(n);
   const f = nodeFont(n);
   const px = parseFloat(f.match(/ (\d+(?:\.\d+)?)px/)[1]);
   const v = textInk(f, text);
-  const valueY = n.y + (label ? 8 : 0);
-  let top = valueY + v.top, bottom = valueY + v.bottom, w = v.w;
+  const vc = n.y + (label ? 8 : 0);             // 数值墨迹中心
+  let top = vc - (v.asc + v.desc) / 2, bottom = vc + (v.asc + v.desc) / 2, w = v.w;
+  let labelInk = null;
   if (label) {
-    const l = textInk(`400 12px ${FONT_STACK}`, label);
-    const labelY = n.y - px / 2;
-    top = Math.min(top, labelY + l.top);
-    bottom = Math.max(bottom, labelY + l.bottom);
-    w = Math.max(w, l.w);
+    labelInk = textInk(`400 12px ${FONT_STACK}`, label);
+    const lc = n.y - px / 2;                    // 标签墨迹中心
+    top = Math.min(top, lc - (labelInk.asc + labelInk.desc) / 2);
+    bottom = Math.max(bottom, lc + (labelInk.asc + labelInk.desc) / 2);
+    w = Math.max(w, labelInk.w);
   }
   return { x: n.x, y: (top + bottom) / 2, w, h: Math.max(bottom - top, 4),
-           labelH: label ? 16 : 0, px };
+           labelH: label ? 16 : 0, px, inkV: v, inkLabel: labelInk };
 }
 function nodeBounds(n) {          // 命中检测用（留呼吸边距，隐形热区）
   const b = textBounds(n);
@@ -1414,14 +1412,16 @@ function drawNode(n, t) {
   const label = n.kind === 'res' ? exprLabel(n) : null;
   const text = displayText(n);
   const f = nodeFont(n);
-  const valueY = n.y + (label ? 8 : 0);
-  const labelY = n.y - b.px / 2;
+  // 数字墨迹中心对齐盒中心：alphabetic 基线 = 墨迹中心 + (desc - asc) / 2
+  const inkV = b.inkV;
+  const valueBaseline = (n.y + (label ? 8 : 0)) + (inkV.asc - inkV.desc) / 2;
+  const labelBaseline = label ? (n.y - b.px / 2) + (b.inkLabel.asc - b.inkLabel.desc) / 2 : 0;
 
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   if (label) {
     ctx.font = `400 12px ${FONT_STACK}`;
     ctx.fillStyle = COLORS.label;
-    ctx.fillText(label, n.x, labelY);
+    ctx.fillText(label, n.x, labelBaseline);
   }
   if (n.kind === 'num' && n.value === null && !isEditing) {
     return; // 空节点不显示（提交前由编辑态渲染）
@@ -1433,13 +1433,13 @@ function drawNode(n, t) {
   if (text === '' && isEditing) {
     // 光标
     if (Math.floor(t / 530) % 2 === 0) {
-      ctx.fillRect(n.x - 1 / cam.s, valueY - b.px * 0.55, 2 / cam.s, b.px * 1.1);
+      ctx.fillRect(n.x - 1 / cam.s, b.y - b.h / 2 + 1, 2 / cam.s, b.h - 2);
     }
   } else {
-    ctx.fillText(text, n.x, valueY);
+    ctx.fillText(text, n.x, valueBaseline);
     if (isEditing && Math.floor(t / 530) % 2 === 0) {
-      const tw = measure(text, f);
-      ctx.fillRect(n.x + tw / 2 + 2 / cam.s, valueY - b.px * 0.55, 2 / cam.s, b.px * 1.1);
+      const tw = inkV.w;
+      ctx.fillRect(n.x + tw / 2 + 2 / cam.s, b.y - b.h / 2 + 1, 2 / cam.s, b.h - 2);
     }
   }
 }
@@ -1482,6 +1482,7 @@ function render(t) {
   // 空画布引导
   if (nodes.length === 0) {
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = COLORS.ghost;
     ctx.font = `400 16px ${FONT_STACK}`;
     ctx.fillText('点按键盘，把数字放到画布上', W / 2, H * 0.40);
