@@ -429,7 +429,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.3.3';
+const VERSION = 'v0.4.0';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -501,7 +501,6 @@ let editingId = null;
 let editBuf = '';              // 编辑中的字符串；null 表示该数字从未提交过值
 let pendingOp = null;          // {op, first, second|null}
 let editFresh = false;         // 刚进入编辑：首个数字输入替换原值
-let spawnCounter = 0;
 let lastPointer = { x: -1, y: -1 };
 
 const byId = id => nodes.find(n => n.id === id);
@@ -678,22 +677,26 @@ function displayText(n) {
   }
   return fmtNum(n.value);
 }
-function nodeBounds(n) {
+function textBounds(n) {          // 紧贴文字内容的包围盒（线框/引线锚定用）
   const label = n.kind === 'res' ? exprLabel(n) : null;
   const text = displayText(n);
   const f = nodeFont(n);
   const px = parseFloat(f.match(/ (\d+(?:\.\d+)?)px/)[1]);
   let w = measure(text, f);
   if (label) w = Math.max(w, measure(label, `400 12px ${FONT_STACK}`));
-  w += NODE_PAD * 2;
-  const h = px + (label ? 16 : 0) + NODE_PAD * 2;
+  const h = px + (label ? 16 : 0);
   return { x: n.x, y: n.y, w, h, labelH: label ? 16 : 0, px };
 }
-function edgePoint(n, tx, ty) {  // 从节点中心指向 (tx,ty)，求与包围盒边的交点
-  const b = nodeBounds(n);
+function nodeBounds(n) {          // 命中检测用（留呼吸边距，隐形热区）
+  const b = textBounds(n);
+  return { x: b.x, y: b.y, w: b.w + NODE_PAD * 2, h: b.h + NODE_PAD * 2, labelH: b.labelH, px: b.px };
+}
+const RING_MARGIN = 1;            // 线框/引线与文字的边距（世界坐标，随缩放）
+function edgePoint(n, tx, ty) {   // 从节点文字边缘指向 (tx,ty)，落在 1px 线框上
+  const b = textBounds(n);
   const dx = tx - n.x, dy = ty - n.y;
   if (dx === 0 && dy === 0) return { x: n.x, y: n.y };
-  const hw = b.w / 2 + 6, hh = b.h / 2 + 6;
+  const hw = b.w / 2 + RING_MARGIN, hh = b.h / 2 + RING_MARGIN;
   const t = Math.min(hw / Math.abs(dx || 1e-9), hh / Math.abs(dy || 1e-9));
   return { x: n.x + dx * t, y: n.y + dy * t };
 }
@@ -710,20 +713,23 @@ function unOpName(op) {
 }
 
 /* ── 节点操作 ── */
-function avoidClash(x, y) {
-  const dir = y > cam.cy ? -1 : 1;              // 下半屏向上逃逸，避免被键盘遮挡
-  const steps = [[0, 0], [36, 72], [-36, 144], [72, 216], [-72, 288], [108, 360], [144, 432], [180, 504]];
-  for (const [dx, dy] of steps) {
-    const tx = x + dx, ty = y + dy * dir;
-    if (!nodes.some(n => Math.abs(n.x - tx) < 90 && Math.abs(n.y - ty) < 70)) return { x: tx, y: ty };
+/* ── 节点放置：围绕锚点按方向优先级找空位 ──
+ * 优先级：右下 45° → 右上 → 左上 → 左下 → 正上；锚点本身空闲则直接用。
+ * 全被占用时向更远的右下/正上顺延，保证可拖拽调整。 */
+const PLACE_DIST = 110;
+function placeNear(ax, ay) {
+  const dirs = [[0, 0], [1, 1], [1, -1], [-1, -1], [-1, 1], [0, -1]];
+  for (const [dx, dy] of dirs) {
+    const tx = ax + dx * PLACE_DIST, ty = ay + dy * PLACE_DIST;
+    if (!nodes.some(n => Math.abs(n.x - tx) < 90 && Math.abs(n.y - ty) < 70)) {
+      return { x: tx, y: ty };
+    }
   }
-  return { x: x + 180, y: y + 504 * dir };
+  return { x: ax + PLACE_DIST * 2, y: ay + PLACE_DIST * 2 };
 }
 function spawnPos() {
   const base = toWorld(W / 2, H * 0.42);
-  const offs = [[0, 0], [40, -30], [80, -60], [-40, 30], [120, -90], [-80, 60], [160, -120], [-120, 90]];
-  const o = offs[spawnCounter++ % offs.length];
-  return avoidClash(base.x + o[0], base.y + o[1]);
+  return placeNear(base.x, base.y);
 }
 function createNum(x, y) {
   pushUndo();
@@ -736,11 +742,11 @@ function createNum(x, y) {
 function createResult(op, aId, bId) {
   pushUndo();
   const a = byId(aId), b = bId !== null ? byId(bId) : null;
-  let x, y;
-  if (b) { x = (a.x + b.x) / 2; y = (a.y + b.y) / 2 + 70; }
-  else { x = a.x + 130; y = a.y + 10; }               // 一元函数放在右侧
-  ({ x, y } = avoidClash(x, y));
-  const n = { id: nextId++, kind: 'res', op, a: aId, b: bId, x, y, value: null };
+  // 锚点：二元=两操作数中点，一元=操作数本身；按方向优先级找空位
+  const ax = b ? (a.x + b.x) / 2 : a.x;
+  const ay = b ? (a.y + b.y) / 2 : a.y;
+  const pos = placeNear(ax, ay);
+  const n = { id: nextId++, kind: 'res', op, a: aId, b: bId, x: pos.x, y: pos.y, value: null };
   nodes.push(n);
   evalAll();
   return n;
@@ -807,11 +813,9 @@ function tapNumDigit(d) {
   if (editingId === null) {
     let x, y;
     if (pendingOp && pendingOp.second === null) {
+      // 第二操作数：围绕第一个操作数放置（右下 45° 优先）
       const first = byId(pendingOp.first);
-      const p = toScreen(first.x + 130, first.y + 30);
-      const cx = Math.min(W - 60, Math.max(60, p.x)), cy = Math.min(H - 200, Math.max(120, p.y));
-      const w = toWorld(cx, cy);
-      const adj = avoidClash(w.x, w.y);
+      const adj = placeNear(first.x, first.y);
       x = adj.x; y = adj.y;
       pendingOp.second = null; // 占位，创建后回填
     } else {
@@ -1341,14 +1345,18 @@ function drawWire(a, b, style, dashed) {
   const p1 = edgePoint(a, b.x, b.y);
   const p2 = edgePoint(b, a.x, a.y);
   const dx = p2.x - p1.x, dy = p2.y - p1.y;
-  const bend = 0.35;
+  // 类 tan 曲线：两端近竖直（陡）、中段平缓的 S 形；竖直连线退化为直线
+  const sgn = dy === 0 ? 1 : Math.sign(dy);
+  const k = 0.42 * Math.abs(dy) + 0.12 * Math.abs(dx);
   ctx.strokeStyle = style;
   ctx.fillStyle = style;
   ctx.lineWidth = 1.5 / cam.s;
   ctx.setLineDash(dashed ? [6 / cam.s, 5 / cam.s] : []);
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
-  ctx.bezierCurveTo(p1.x + dx * bend, p1.y, p2.x - dx * bend, p2.y, p2.x, p2.y);
+  ctx.bezierCurveTo(p1.x + dx * 0.08, p1.y + sgn * k,
+                    p2.x - dx * 0.08, p2.y - sgn * k,
+                    p2.x, p2.y);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.beginPath();                                  // 端点小圆点
@@ -1366,19 +1374,19 @@ function roundedRect(x, y, w, h, r) {
   ctx.closePath();
 }
 function drawNode(n, t) {
-  const b = nodeBounds(n);
+  const b = textBounds(n);
   const isSel = n.id === selectedId;
   const isEditing = n.id === editingId;
   const isPendingFirst = pendingOp && pendingOp.first === n.id;
 
-  // 选中/待定光环
+  // 选中/待定线框：紧贴文字 1px（世界坐标，随缩放）
   if (isSel || isPendingFirst) {
     const pulse = isPendingFirst ? 0.55 + 0.35 * Math.sin(t / 240) : 1;
     ctx.strokeStyle = isPendingFirst ? COLORS.ringSoft : COLORS.ring;
     ctx.globalAlpha = pulse;
     ctx.lineWidth = 2 / cam.s;
-    roundedRect(b.x - b.w / 2 - 8 / cam.s, b.y - b.h / 2 - 8 / cam.s,
-                b.w + 16 / cam.s, b.h + 16 / cam.s, 12 / cam.s);
+    roundedRect(b.x - b.w / 2 - RING_MARGIN, b.y - b.h / 2 - RING_MARGIN,
+                b.w + RING_MARGIN * 2, b.h + RING_MARGIN * 2, 5);
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
@@ -1392,7 +1400,7 @@ function drawNode(n, t) {
   if (label) {
     ctx.font = `400 12px ${FONT_STACK}`;
     ctx.fillStyle = COLORS.label;
-    ctx.fillText(label, n.x, n.y - b.h / 2 + NODE_PAD + b.labelH / 2);
+    ctx.fillText(label, n.x, n.y - b.h / 2 + b.labelH / 2);
   }
   if (n.kind === 'num' && n.value === null && !isEditing) {
     return; // 空节点不显示（提交前由编辑态渲染）
@@ -1425,14 +1433,14 @@ function render(t) {
   ctx.scale(cam.s, cam.s);
   ctx.translate(-cam.cx, -cam.cy);
 
-  // 连线（在节点下层）
+  // 连线（在节点下层）；一元函数只有操作数→结果一条线
   for (const n of nodes) {
     if (n.kind !== 'res') continue;
     const a = byId(n.a), b = n.b !== null ? byId(n.b) : null;
-    if (!a || !b) continue;
+    if (!a) continue;
     const err = n.value === null;
-    drawWire(a, b, err ? 'rgba(255,59,48,.4)' : COLORS.wire, err);
-    drawWire(b, n, err ? 'rgba(255,59,48,.4)' : COLORS.wire, err);
+    drawWire(a, n, err ? 'rgba(255,59,48,.4)' : COLORS.wire, err);
+    if (b) drawWire(b, n, err ? 'rgba(255,59,48,.4)' : COLORS.wire, err);
   }
   // 待定预览虚线
   if (pendingOp) {
