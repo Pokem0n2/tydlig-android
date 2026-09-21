@@ -1,0 +1,7 @@
+# Build artifacts
+apk/build/
+/tydlig-v*.apk
+
+# OS noise
+Thumbs.db
+.DS_Store

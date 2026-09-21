@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F6F5F1">
+<title>有数</title>
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --bar-bg: rgba(246, 245, 241, .85);
+    --keypad-bg: rgba(242, 242, 247, .92);
+    --key-bg: #FFFFFF;
+    --key-bg-active: #E9E9EE;
+    --key-digit: #1B1B1F;
+    --key-fn: #3C3C43;
+    --accent: #0A84FF;
+    --hairline: rgba(60, 60, 67, .18);
+    --text: #1B1B1F;
+    --text-2: rgba(60, 60, 67, .6);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: var(--paper);
+    overscroll-behavior: none;
+    font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto,
+                 "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #canvas {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    display: block; touch-action: none;
+  }
+  /* ── 顶栏 ── */
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    height: calc(48px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 14px 0 18px;
+    background: var(--bar-bg);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(18px) saturate(1.6);
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  #topbar .title { font-size: 17px; font-weight: 700; letter-spacing: .2px; color: var(--text); }
+  #topbar .actions { display: flex; align-items: center; gap: 4px; }
+  .icon-btn {
+    width: 38px; height: 38px; border: none; background: transparent; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 20px; cursor: pointer;
+  }
+  .icon-btn:active { background: rgba(120, 120, 128, .16); }
+  .icon-btn:disabled { color: rgba(60, 60, 67, .3); }
+  .icon-btn svg { width: 21px; height: 21px; }
+  /* ── 键盘 ── */
+  #keypad {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    background: var(--keypad-bg);
+    -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    backdrop-filter: blur(22px) saturate(1.6);
+    border-top: 0.5px solid var(--hairline);
+  }
+  #keypad .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .key {
+    height: 50px; border: none; border-radius: 12px;
+    background: var(--key-bg);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .10);
+    font-family: inherit; font-size: 23px; font-weight: 500;
+    color: var(--key-digit); cursor: pointer;
+    transition: transform .06s ease, background .06s ease;
+    touch-action: manipulation;
+  }
+  .key:active { transform: scale(.94); background: var(--key-bg-active); box-shadow: none; }
+  .key.fn { font-size: 20px; font-weight: 600; color: var(--key-fn); background: #ECECF1; }
+  .key.fn:active { background: #E0E0E6; }
+  .key.op { color: var(--accent); font-weight: 600; }
+  .key.wide-symbol { font-size: 26px; }
+  /* ── 提示条（待选第二操作数等） ── */
+  #hint {
+    position: fixed; top: calc(58px + env(safe-area-inset-top)); left: 50%; z-index: 9;
+    transform: translateX(-50%) translateY(-6px);
+    display: flex; align-items: center; gap: 8px;
+    max-width: 86%;
+    padding: 7px 14px; border-radius: 999px;
+    background: rgba(28, 28, 30, .82); color: #fff;
+    font-size: 13px; letter-spacing: .3px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+    white-space: nowrap;
+  }
+  #hint.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #hint .cancel {
+    border: none; background: rgba(255,255,255,.22); color: #fff;
+    width: 18px; height: 18px; border-radius: 50%;
+    font-size: 12px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<header id="topbar">
+  <div class="title">有数</div>
+  <div class="actions" id="topbar-actions"></div>
+</header>
+
+<div id="hint"><span id="hint-text"></span><button class="cancel" id="hint-cancel">✕</button></div>
+
+<footer id="keypad">
+  <div class="grid" id="keypad-grid">
+    <button class="key fn" data-k="clear">C</button>
+    <button class="key fn" data-k="back">⌫</button>
+    <button class="key fn op wide-symbol" data-k="^">^</button>
+    <button class="key op wide-symbol" data-k="/">÷</button>
+
+    <button class="key" data-k="7">7</button>
+    <button class="key" data-k="8">8</button>
+    <button class="key" data-k="9">9</button>
+    <button class="key op wide-symbol" data-k="*">×</button>
+
+    <button class="key" data-k="4">4</button>
+    <button class="key" data-k="5">5</button>
+    <button class="key" data-k="6">6</button>
+    <button class="key op wide-symbol" data-k="-">−</button>
+
+    <button class="key" data-k="1">1</button>
+    <button class="key" data-k="2">2</button>
+    <button class="key" data-k="3">3</button>
+    <button class="key op wide-symbol" data-k="+">+</button>
+
+    <button class="key fn" data-k="sign">±</button>
+    <button class="key" data-k="0">0</button>
+    <button class="key" data-k=".">.</button>
+    <button class="key fn" data-k="enter">⏎</button>
+  </div>
+</footer>
+
+<script>
+'use strict';
+/* ======================================================================
+ *  有数 Tydlig-style canvas calculator  ·  v0.0.1
+ *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
+ * ====================================================================== */
+
+const VERSION = 'v0.0.1';
+
+/* ── 常量与配色 ── */
+const COLORS = {
+  paper: '#F6F5F1',
+  num: '#1B1B1F',
+  numEditing: '#0A84FF',
+  res: '#0A84FF',
+  resError: '#FF3B30',
+  label: 'rgba(60,60,67,.55)',
+  wire: 'rgba(60,60,67,.30)',
+  wirePending: 'rgba(10,132,255,.55)',
+  ring: 'rgba(10,132,255,.95)',
+  ringSoft: 'rgba(10,132,255,.35)',
+  ghost: 'rgba(60,60,67,.35)',
+};
+const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+const OP_SYM = { '+': '+', '-': '−', '*': '×', '/': '÷', '^': '^' };
+const BASE_FONT = 40;          // 数字基准字号（世界单位）
+const NODE_PAD = 14;           // 命中区呼吸边距
+const MAX_DIGITS = 12;         // 输入缓冲最大字符数（不含负号）
+
+/* ── 画布与相机 ── */
+const cv = document.getElementById('canvas');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const cam = { cx: 0, cy: 0, s: 1 };          // screen = (world - c) * s + viewport/2
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 3);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+const toScreen  = (x, y) => ({ x: (x - cam.cx) * cam.s + W / 2, y: (y - cam.cy) * cam.s + H / 2 });
+const toWorld   = (x, y) => ({ x: (x - W / 2) / cam.s + cam.cx, y: (y - H / 2) / cam.s + cam.cy });
+const clampS = s => Math.min(2.5, Math.max(0.35, s));
+
+/* ── 状态 ── */
+let nodes = [];                // 创建顺序 = 拓扑顺序（操作数总在结果之前创建）
+let nextId = 1;
+let selectedId = null;
+let editingId = null;
+let editBuf = '';              // 编辑中的字符串；null 表示该数字从未提交过值
+let pendingOp = null;          // {op, first, second|null}
+let editFresh = false;         // 刚进入编辑：首个数字输入替换原值
+let spawnCounter = 0;
+let lastPointer = { x: -1, y: -1 };
+
+const byId = id => nodes.find(n => n.id === id);
+
+/* ── 数值格式化 ── */
+function fmtNum(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  if (!Number.isFinite(v)) return v > 0 ? '∞' : '-∞';
+  let s;
+  if (v !== 0 && (Math.abs(v) >= 1e12 || Math.abs(v) < 1e-6)) {
+    s = v.toExponential(5).replace(/\.?0+e/, 'e');
+  } else {
+    s = String(parseFloat(v.toPrecision(12)));
+  }
+  return s.replace('-', '−');
+}
+function fmtRaw(v) {            // 编辑恢复用的原始串
+  if (v === null || v === undefined || !Number.isFinite(v)) return '';
+  return String(parseFloat(v.toPrecision(12)));
+}
+function calc(n) {
+  if (n.kind !== 'res') return n.value;
+  const a = byId(n.a), b = n.b !== null ? byId(n.b) : null;
+  const va = a ? a.value : null, vb = b ? b.value : null;
+  if (va === null || (n.b !== null && vb === null)) return null;
+  switch (n.op) {
+    case '+': return va + vb;
+    case '-': return va - vb;
+    case '*': return va * vb;
+    case '/': return vb === 0 ? null : va / vb;
+    case '^': { const r = Math.pow(va, vb); return Number.isFinite(r) || Number.isNaN(r) ? (Number.isNaN(r) ? null : r) : r; }
+  }
+  return null;
+}
+function evalAll() { for (const n of nodes) if (n.kind === 'res') n.value = calc(n); }
+
+/* ── 布局度量 ── */
+const textWCache = new Map();
+function measure(text, font) {
+  const key = font + '|' + text;
+  let w = textWCache.get(key);
+  if (w === undefined) { ctx.font = font; w = ctx.measureText(text).width; textWCache.set(key, w); }
+  return w;
+}
+function numFontSize(text) {
+  const L = Math.max(text.length, 1);
+  return L <= 6 ? BASE_FONT : Math.max(18, BASE_FONT * 6 / L);
+}
+function nodeFont(n) {
+  const text = displayText(n);
+  const px = n.kind === 'num' ? numFontSize(text) : numFontSize(text);
+  return `300 ${px}px ${FONT_STACK}`;
+}
+function displayText(n) {
+  if (n.kind === 'num') {
+    if (n.id === editingId) return editBuf === '' ? '' : editBuf.replace('-', '−');
+    return fmtNum(n.value);
+  }
+  return fmtNum(n.value);
+}
+function nodeBounds(n) {
+  const label = n.kind === 'res' ? exprLabel(n) : null;
+  const text = displayText(n);
+  const f = nodeFont(n);
+  const px = parseFloat(f.match(/ (\d+(?:\.\d+)?)px/)[1]);
+  let w = measure(text, f);
+  if (label) w = Math.max(w, measure(label, `400 12px ${FONT_STACK}`));
+  w += NODE_PAD * 2;
+  const h = px + (label ? 16 : 0) + NODE_PAD * 2;
+  return { x: n.x, y: n.y, w, h, labelH: label ? 16 : 0, px };
+}
+function edgePoint(n, tx, ty) {  // 从节点中心指向 (tx,ty)，求与包围盒边的交点
+  const b = nodeBounds(n);
+  const dx = tx - n.x, dy = ty - n.y;
+  if (dx === 0 && dy === 0) return { x: n.x, y: n.y };
+  const hw = b.w / 2 + 6, hh = b.h / 2 + 6;
+  const t = Math.min(hw / Math.abs(dx || 1e-9), hh / Math.abs(dy || 1e-9));
+  return { x: n.x + dx * t, y: n.y + dy * t };
+}
+function exprLabel(n) {
+  const a = byId(n.a), b = n.b !== null ? byId(n.b) : null;
+  const sa = a ? (a.kind === 'num' ? fmtNum(a.value) : fmtNum(a.value)) : '?';
+  let s = n.b !== null ? `${sa} ${OP_SYM[n.op]} ${b ? fmtNum(b.value) : '?'}` : `${unOpName(n.op)}(${sa})`;
+  if (s.length > 18) s = s.slice(0, 17) + '…';
+  return s;
+}
+function unOpName(op) { return { sqrt: '√', square: 'x²', neg: '±', pct: '%', inv: '1/x' }[op] || op; }
+
+/* ── 节点操作 ── */
+function spawnPos() {
+  const base = toWorld(W / 2, H * 0.42);
+  const offs = [[0, 0], [40, -30], [80, -60], [-40, 30], [120, -90], [-80, 60], [160, -120], [-120, 90]];
+  const o = offs[spawnCounter++ % offs.length];
+  return { x: base.x + o[0], y: base.y + o[1] };
+}
+function createNum(x, y) {
+  const n = { id: nextId++, kind: 'num', x, y, value: null };
+  nodes.push(n);
+  editingId = n.id; selectedId = n.id; editBuf = '';
+  return n;
+}
+function createResult(op, aId, bId) {
+  const a = byId(aId), b = byId(bId);
+  let x = (a.x + b.x) / 2, y = (a.y + b.y) / 2 + 70;
+  for (let i = 0; i < 8; i++) {
+    const clash = nodes.some(n => Math.abs(n.x - x) < 90 && Math.abs(n.y - y) < 70);
+    if (!clash) break;
+    x += 30; y += 75;
+  }
+  const n = { id: nextId++, kind: 'res', op, a: aId, b: bId, x, y, value: null };
+  nodes.push(n);
+  evalAll();
+  return n;
+}
+function commitEdit() {
+  editFresh = false;
+  const n = byId(editingId);
+  if (!n) { editingId = null; return null; }
+  let buf = editBuf.trim();
+  if (buf === '' || buf === '-' || buf === '−' || buf === '.') {
+    if (n.value === null) {          // 从未提交过值 → 放弃这个空节点
+      removeNode(n.id, false);
+      editingId = null; selectedId = null;
+      return null;
+    }
+    buf = fmtRaw(n.value);
+  } else {
+    const v = parseFloat(buf);
+    if (Number.isNaN(v)) { buf = fmtRaw(n.value); }
+    else { n.value = v; evalAll(); }          // 值变了 → 下游结果实时联动
+  }
+  editBuf = '';
+  editingId = null;
+  if (pendingOp && pendingOp.second === n.id) {
+    const r = createResult(pendingOp.op, pendingOp.first, n.id);
+    pendingOp = null;
+    selectedId = r.id;
+    return r;
+  }
+  return n;
+}
+function removeNode(id, cascade) {
+  const n = byId(id);
+  if (!n) return;
+  const doomed = new Set([id]);
+  if (cascade) {
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const m of nodes) {
+        if (m.kind === 'res' && !doomed.has(m.id) && ((doomed.has(m.a)) || (m.b !== null && doomed.has(m.b)))) {
+          doomed.add(m.id); grew = true;
+        }
+      }
+    }
+  }
+  nodes = nodes.filter(m => !doomed.has(m.id));
+  if (doomed.has(selectedId)) selectedId = null;
+  if (doomed.has(editingId)) { editingId = null; editBuf = ''; }
+  if (pendingOp && (doomed.has(pendingOp.first) || (pendingOp.second && doomed.has(pendingOp.second)))) pendingOp = null;
+  evalAll();
+}
+function startEditing(n) {
+  selectedId = n.id; editingId = n.id;
+  editBuf = n.value === null ? '' : fmtRaw(n.value);
+  editFresh = true;
+}
+function tapNumDigit(d) {
+  if (editingId === null) {
+    let x, y;
+    if (pendingOp && pendingOp.second === null) {
+      const first = byId(pendingOp.first);
+      const p = toScreen(first.x + 130, first.y + 30);
+      const cx = Math.min(W - 60, Math.max(60, p.x)), cy = Math.min(H - 200, Math.max(120, p.y));
+      const w = toWorld(cx, cy);
+      x = w.x; y = w.y;
+      pendingOp.second = null; // 占位，创建后回填
+    } else {
+      const p = spawnPos(); x = p.x; y = p.y;
+    }
+    const n = createNum(x, y);
+    if (pendingOp && pendingOp.second === null) pendingOp.second = n.id;
+    editBuf = d;
+    return;
+  }
+  if (editFresh) { editFresh = false; editBuf = ''; }   // 首个输入替换原值
+  if (editBuf.length - (editBuf.startsWith('-') ? 1 : 0) >= MAX_DIGITS) return;
+  if (d === '.') {
+    if (editBuf.includes('.')) return;
+    editBuf += (editBuf === '' || editBuf === '-') ? '0.' : '.';
+    return;
+  }
+  if (editBuf === '0') editBuf = '';                    // 前导 0 直接替换
+  else if (editBuf === '-0') editBuf = '-';
+  editBuf += d;
+}
+
+/* ── 键盘事件 ── */
+function onKey(k) {
+  if (k >= '0' && k <= '9' || k === '.') { tapNumDigit(k); return; }
+  if (k === 'back') {
+    if (editingId !== null) {
+      editBuf = editBuf.slice(0, -1);
+    } else if (pendingOp) {
+      cancelPending();
+    }
+    return;
+  }
+  if (k === 'clear') {
+    if (editingId !== null) editBuf = '';
+    else cancelPending(), selectedId = null;
+    return;
+  }
+  if (k === 'sign') {
+    if (editingId !== null) {
+      editBuf = editBuf.startsWith('-') ? editBuf.slice(1) : (editBuf === '' ? '-' : '-' + editBuf);
+    } else if (selectedId !== null) {
+      const n = byId(selectedId);
+      if (n && n.kind === 'num' && n.value !== null) { n.value = -n.value; evalAll(); }
+    }
+    return;
+  }
+  if (k === 'enter') {
+    if (editingId !== null) commitEdit();
+    return;
+  }
+  if (k in OP_SYM) {
+    if (editingId !== null) {
+      const n = commitEdit();
+      if (!n) return;
+      if (pendingOp && pendingOp.second !== null) return; // 刚自动连完线，别覆盖
+      pendingOp = { op: k, first: n.id, second: null };
+    } else if (pendingOp && pendingOp.second === null) {
+      pendingOp.op = k;                                    // 还没选第二个 → 换运算符
+    } else if (selectedId !== null) {
+      pendingOp = { op: k, first: selectedId, second: null };
+    }
+    return;
+  }
+}
+function cancelPending() { pendingOp = null; updateHint(); }
+
+document.getElementById('keypad-grid').addEventListener('click', e => {
+  const btn = e.target.closest('.key');
+  if (btn) { onKey(btn.dataset.k); }
+});
+document.getElementById('hint-cancel').addEventListener('click', cancelPending);
+
+/* ── 提示条 ── */
+const hintEl = document.getElementById('hint');
+const hintText = document.getElementById('hint-text');
+function updateHint() {
+  if (pendingOp) {
+    const first = byId(pendingOp.first);
+    const t = OP_SYM[pendingOp.op];
+    hintText.textContent = first
+      ? `${displayText(first).slice(0, 10)} ${t} ？  → 点另一个数字`
+      : `点另一个数字`;
+    hintEl.classList.add('show');
+  } else {
+    hintEl.classList.remove('show');
+  }
+}
+
+/* ── 指针交互 ── */
+const pointers = new Map();
+let gesture = null;   // {type:'node'|'pan'|'pinch', ...}
+
+function hitNode(sx, sy) {
+  const w = toWorld(sx, sy);
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const b = nodeBounds(nodes[i]);
+    if (Math.abs(w.x - b.x) <= b.w / 2 && Math.abs(w.y - b.y) <= b.h / 2) return nodes[i];
+  }
+  return null;
+}
+
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  lastPointer = { x: e.clientX, y: e.clientY };
+  if (pointers.size === 2) {
+    const [p1, p2] = [...pointers.values()];
+    gesture = { type: 'pinch', d0: Math.hypot(p1.x - p2.x, p1.y - p2.y), s0: cam.s,
+                mid0: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+                w0: toWorld((p1.x + p2.x) / 2, (p1.y + p2.y) / 2) };
+    return;
+  }
+  const hit = hitNode(e.clientX, e.clientY);
+  if (hit) gesture = { type: 'node', id: hit.id, sx: e.clientX, sy: e.clientY, moved: false,
+                       wx: hit.x, wy: hit.y };
+  else gesture = { type: 'pan', sx: e.clientX, sy: e.clientY, moved: false, cx: cam.cx, cy: cam.cy };
+});
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) { lastPointer = { x: e.clientX, y: e.clientY }; return; }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  lastPointer = { x: e.clientX, y: e.clientY };
+  if (!gesture) return;
+  if (gesture.type === 'pinch' && pointers.size >= 2) {
+    const [p1, p2] = [...pointers.values()];
+    const d = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    if (gesture.d0 > 0) cam.s = clampS(gesture.s0 * d / gesture.d0);
+    cam.cx = gesture.w0.x - (mid.x - W / 2) / cam.s;
+    cam.cy = gesture.w0.y - (mid.y - H / 2) / cam.s;
+    return;
+  }
+  const dx = e.clientX - gesture.sx, dy = e.clientY - gesture.sy;
+  if (!gesture.moved && Math.hypot(dx, dy) > 6) gesture.moved = true;
+  if (gesture.type === 'node' && gesture.moved) {
+    const n = byId(gesture.id);
+    if (n) { const w = toWorld(e.clientX, e.clientY);
+             n.x = gesture.wx + dx / cam.s; n.y = gesture.wy + dy / cam.s; }
+  } else if (gesture.type === 'pan' && gesture.moved) {
+    cam.cx = gesture.cx - dx / cam.s;
+    cam.cy = gesture.cy - dy / cam.s;
+  }
+});
+function endPointer(e) {
+  const wasGesture = gesture;
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2 && wasGesture && wasGesture.type === 'pinch') gesture = null;
+  if (pointers.size === 0) {
+    gesture = null;
+    if (wasGesture && !wasGesture.moved && e.type === 'pointerup') {
+      handleTap(e.clientX, e.clientY, wasGesture);
+    }
+  }
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+
+function handleTap(sx, sy, g) {
+  const hit = g.type === 'node' ? byId(g.id) : null;
+  if (hit) {
+    if (editingId !== null && editingId !== hit.id) commitEdit();
+    if (pendingOp && pendingOp.second === null && hit.id !== pendingOp.first) {
+      const r = createResult(pendingOp.op, pendingOp.first, hit.id);
+      pendingOp = null; selectedId = r.id;
+    } else if (selectedId === hit.id && hit.kind === 'num') {
+      startEditing(hit);            // 二次点击 → 编辑
+    } else {
+      selectedId = hit.id;
+    }
+  } else {
+    if (editingId !== null) commitEdit();
+    else if (pendingOp) cancelPending();
+    else selectedId = null;
+  }
+  updateHint();
+}
+
+/* 桌面：滚轮缩放 */
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f = Math.exp(-e.deltaY * 0.0016);
+  const w0 = toWorld(e.clientX, e.clientY);
+  cam.s = clampS(cam.s * f);
+  cam.cx = w0.x - (e.clientX - W / 2) / cam.s;
+  cam.cy = w0.y - (e.clientY - H / 2) / cam.s;
+}, { passive: false });
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+/* 桌面：物理键盘 */
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const K = e.key;
+  if (/^[0-9.]$/.test(K)) onKey(K);
+  else if (K === 'Backspace') onKey('back');
+  else if (K === 'Escape') onKey('clear');
+  else if (K === 'Enter') onKey('enter');
+  else if (K === '+') onKey('+');
+  else if (K === '-') onKey('-');
+  else if (K === '*') onKey('*');
+  else if (K === '/') onKey('/');
+  else if (K === '^') onKey('^');
+});
+
+/* ── 渲染 ── */
+function drawWire(a, b, style, dashed) {
+  const p1 = edgePoint(a, b.x, b.y);
+  const p2 = edgePoint(b, a.x, a.y);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const bend = 0.35;
+  ctx.strokeStyle = style;
+  ctx.lineWidth = 1.5 / cam.s;
+  ctx.setLineDash(dashed ? [6 / cam.s, 5 / cam.s] : []);
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y);
+  ctx.bezierCurveTo(p1.x + dx * bend, p1.y, p2.x - dx * bend, p2.y, p2.x, p2.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+function roundedRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function drawNode(n, t) {
+  const b = nodeBounds(n);
+  const isSel = n.id === selectedId;
+  const isEditing = n.id === editingId;
+  const isPendingFirst = pendingOp && pendingOp.first === n.id;
+
+  // 选中/待定光环
+  if (isSel || isPendingFirst) {
+    const pulse = isPendingFirst ? 0.55 + 0.35 * Math.sin(t / 240) : 1;
+    ctx.strokeStyle = isPendingFirst ? COLORS.ringSoft : COLORS.ring;
+    ctx.globalAlpha = pulse;
+    ctx.lineWidth = 2 / cam.s;
+    roundedRect(b.x - b.w / 2 - 8 / cam.s, b.y - b.h / 2 - 8 / cam.s,
+                b.w + 16 / cam.s, b.h + 16 / cam.s, 12 / cam.s);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  const label = n.kind === 'res' ? exprLabel(n) : null;
+  const text = displayText(n);
+  const f = nodeFont(n);
+  const valueY = n.y + (label ? b.labelH / 2 : 0);
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (label) {
+    ctx.font = `400 12px ${FONT_STACK}`;
+    ctx.fillStyle = COLORS.label;
+    ctx.fillText(label, n.x, n.y - b.h / 2 + NODE_PAD + b.labelH / 2);
+  }
+  if (n.kind === 'num' && n.value === null && !isEditing) {
+    return; // 空节点不显示（提交前由编辑态渲染）
+  }
+  ctx.font = f;
+  let color = n.kind === 'res' ? (n.value === null ? COLORS.resError : COLORS.res) : COLORS.num;
+  if (isEditing) color = COLORS.numEditing;
+  ctx.fillStyle = color;
+  if (text === '' && isEditing) {
+    // 光标
+    if (Math.floor(t / 530) % 2 === 0) {
+      ctx.fillRect(n.x - 1 / cam.s, valueY - b.px * 0.55, 2 / cam.s, b.px * 1.1);
+    }
+  } else {
+    ctx.fillText(text, n.x, valueY);
+    if (isEditing && Math.floor(t / 530) % 2 === 0) {
+      const tw = measure(text, f);
+      ctx.fillRect(n.x + tw / 2 + 2 / cam.s, valueY - b.px * 0.55, 2 / cam.s, b.px * 1.1);
+    }
+  }
+}
+function render(t) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = COLORS.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  // 世界层：应用相机变换
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.scale(cam.s, cam.s);
+  ctx.translate(-cam.cx, -cam.cy);
+
+  // 连线（在节点下层）
+  for (const n of nodes) {
+    if (n.kind !== 'res') continue;
+    const a = byId(n.a), b = n.b !== null ? byId(n.b) : null;
+    if (!a || !b) continue;
+    const err = n.value === null;
+    drawWire(a, b, err ? 'rgba(255,59,48,.4)' : COLORS.wire, err);
+    drawWire(b, n, err ? 'rgba(255,59,48,.4)' : COLORS.wire, err);
+  }
+  // 待定预览虚线
+  if (pendingOp) {
+    const first = byId(pendingOp.first);
+    if (first) {
+      const target = pendingOp.second !== null ? byId(pendingOp.second) : null;
+      let tx, ty;
+      if (target) { tx = target.x; ty = target.y; }
+      else if (lastPointer.x >= 0) { const w = toWorld(lastPointer.x, lastPointer.y); tx = w.x; ty = w.y; }
+      else { tx = first.x + 130; ty = first.y + 30; }
+      drawWire(first, { x: tx, y: ty, kind: 'num', value: 0, id: -1 }, COLORS.wirePending, true);
+    }
+  }
+
+  for (const n of nodes) drawNode(n, t);
+  ctx.restore();
+
+  // 空画布引导
+  if (nodes.length === 0) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = COLORS.ghost;
+    ctx.font = `400 16px ${FONT_STACK}`;
+    ctx.fillText('点按键盘，把数字放到画布上', W / 2, H * 0.40);
+    ctx.font = `400 13px ${FONT_STACK}`;
+    ctx.fillStyle = 'rgba(60,60,67,.28)';
+    ctx.fillText('选中数字后点运算符，再点另一个数字，结果会实时联动', W / 2, H * 0.40 + 26);
+  }
+
+  requestAnimationFrame(render);
+}
+
+/* ── 测试钩子（只读 + 少量驱动，正式功能不受影响） ── */
+window.__TYDLIG_TEST__ = {
+  version: VERSION,
+  dump() {
+    return {
+      version: VERSION, cam: { ...cam }, selectedId, editingId, editBuf, pendingOp,
+      nodes: nodes.map(n => ({ ...n })),
+    };
+  },
+  fmt: fmtNum,
+  key: onKey,
+  tap(clientX, clientY) { handleTap(clientX, clientY, { type: hitNode(clientX, clientY) ? 'node' : 'pan', id: hitNode(clientX, clientY)?.id, moved: false }); },
+};
+
+/* ── 启动 ── */
+resize();
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
