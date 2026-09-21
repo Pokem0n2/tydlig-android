@@ -429,7 +429,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.3.2';
+const VERSION = 'v0.3.3';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -848,8 +848,15 @@ function onKey(k) {
     return;
   }
   if (k === 'clear') {
-    if (editingId !== null) editBuf = '';
-    else cancelPending(), selectedId = null;
+    if (editingId !== null) { editBuf = ''; return; }
+    if (pendingOp) { cancelPending(); return; }
+    // 计算器习惯：C = 全部清空（可撤销）
+    if (nodes.length === 0) { selectedId = null; syncToolbar(); return; }
+    pushUndo();
+    nodes = [];
+    selectedId = null; editingId = null; editBuf = ''; pendingOp = null;
+    evalAll(); scheduleSave(); syncToolbar();
+    toast('画布已清空 · 可撤销');
     return;
   }
   if (k === 'sign') {
@@ -1133,9 +1140,10 @@ document.getElementById('mn-help').addEventListener('click', () => {
     <b>基本算法</b><br>
     · 点键盘输入数字，它出现在画布中央，可随手拖动<br>
     · 选中一个数字，点 <b>＋ − × ÷ ^</b>，再点另一个数字，结果自动连线生成<br>
+    · 单击数字立刻激活编辑：直接输入覆盖旧值，<b>C</b> 清空当前输入或整个画布<br>
     · 结果也是数字——可以继续参加运算，长按可「断开连接」变回普通数字<br><br>
     <b>实时联动</b><br>
-    · 双击数字修改数值，所有下游结果立刻重算<br>
+    · 单击数字即可修改：直接输入会覆盖旧值，所有下游结果立刻重算<br>
     · 除以零、负数开方等无意义运算显示红色「—」，修好输入即恢复<br><br>
     <b>科学函数</b><br>
     · 点键盘右上角 <b>fx</b> 展开：√ x² xʸ 1/x % sin cos tan ln log π e<br>
@@ -1280,10 +1288,11 @@ function handleTap(sx, sy, g) {
     if (pendingOp && pendingOp.second === null && hit.id !== pendingOp.first) {
       const r = createResult(pendingOp.op, pendingOp.first, hit.id);
       pendingOp = null; selectedId = r.id;
-    } else if (selectedId === hit.id && hit.kind === 'num') {
-      startEditing(hit);            // 二次点击 → 编辑
+    } else if (hit.kind === 'num') {
+      // 单击数字 = 立刻激活编辑（激活中的再点一次保持原状）
+      if (editingId !== hit.id) startEditing(hit);
     } else {
-      selectedId = hit.id;
+      selectedId = hit.id;            // 结果节点：仅选中（用于继续运算）
     }
   } else {
     if (editingId !== null) commitEdit();
