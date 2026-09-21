@@ -14,10 +14,35 @@
     --key-bg-active: #E9E9EE;
     --key-digit: #1B1B1F;
     --key-fn: #3C3C43;
+    --key-fn-bg: #ECECF1;
+    --key-fn-bg-active: #E0E0E6;
     --accent: #0A84FF;
+    --danger: #FF3B30;
     --hairline: rgba(60, 60, 67, .18);
     --text: #1B1B1F;
     --text-2: rgba(60, 60, 67, .6);
+    --panel-bg: rgba(250, 250, 252, .96);
+    --card-bg: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1C1C1E;
+      --bar-bg: rgba(28, 28, 30, .85);
+      --keypad-bg: rgba(24, 24, 26, .94);
+      --key-bg: #2C2C2E;
+      --key-bg-active: #3A3A3C;
+      --key-digit: #F2F2F7;
+      --key-fn: #D1D1D6;
+      --key-fn-bg: #232325;
+      --key-fn-bg-active: #3A3A3C;
+      --accent: #0A84FF;
+      --danger: #FF453A;
+      --hairline: rgba(84, 84, 88, .55);
+      --text: #F2F2F7;
+      --text-2: rgba(235, 235, 245, .6);
+      --panel-bg: rgba(44, 44, 46, .96);
+      --card-bg: #2C2C2E;
+    }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -93,8 +118,8 @@
     touch-action: manipulation;
   }
   .key:active { transform: scale(.94); background: var(--key-bg-active); box-shadow: none; }
-  .key.fn { font-size: 20px; font-weight: 600; color: var(--key-fn); background: #ECECF1; }
-  .key.fn:active { background: #E0E0E6; }
+  .key.fn { font-size: 20px; font-weight: 600; color: var(--key-fn); background: var(--key-fn-bg); }
+  .key.fn:active { background: var(--key-fn-bg-active); }
   .key.op { color: var(--accent); font-weight: 600; }
   .key.wide-symbol { font-size: 26px; }
   /* ── 提示条（待选第二操作数等） ── */
@@ -143,7 +168,7 @@
   }
   #sheet.show { transform: translateY(0); }
   #sheet .panel {
-    background: rgba(250, 250, 252, .96);
+    background: var(--panel-bg);
     -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
     border-radius: 16px; overflow: hidden;
   }
@@ -158,13 +183,69 @@
     border-bottom: 0.5px solid var(--hairline);
   }
   #sheet .sheet-row:active { background: rgba(120,120,128,.14); }
-  #sheet .sheet-row.danger { color: #FF3B30; }
+  #sheet .sheet-row.danger { color: var(--danger); }
   #sheet .sheet-cancel {
     display: block; width: 100%; margin-top: 8px; border: none;
-    background: #fff; font-family: inherit; font-size: 17px; font-weight: 600;
+    background: var(--card-bg); font-family: inherit; font-size: 17px; font-weight: 600;
     color: var(--accent); padding: 15px 0; border-radius: 16px; cursor: pointer;
   }
-  #sheet .sheet-cancel:active { background: #ECECF1; }
+  #sheet .sheet-cancel:active { background: var(--key-bg-active); }
+  /* ── 主菜单 / 信息面板 / 确认框 / 导入框 ── */
+  #menu, #info {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    transform: translateY(105%);
+    transition: transform .24s cubic-bezier(.32,.72,.35,1);
+  }
+  #menu.show, #info.show { transform: translateY(0); }
+  #menu .panel, #info .panel {
+    background: var(--panel-bg);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border-radius: 16px; overflow: hidden;
+  }
+  #menu .sheet-row {
+    display: block; width: 100%; border: none; background: transparent;
+    font-family: inherit; font-size: 17px; color: var(--accent);
+    padding: 13px 0; text-align: center; cursor: pointer;
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  #menu .sheet-row:active { background: rgba(120,120,128,.14); }
+  #menu .sheet-row.destructive { color: var(--danger); }
+  #info .info-body {
+    padding: 12px 18px 16px; font-size: 13.5px; line-height: 1.65;
+    color: var(--text); max-height: 46vh; overflow-y: auto;
+  }
+  #info .info-body b { font-weight: 700; }
+  #info .info-body .dim { color: var(--text-2); font-size: 12px; }
+  #confirm-box, #import-box {
+    position: fixed; inset: 0; z-index: 30; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+    background: rgba(0,0,0,.28);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  #confirm-box.show, #import-box.show { opacity: 1; pointer-events: auto; }
+  #confirm-box .card, #import-box .card {
+    background: var(--card-bg); border-radius: 16px; padding: 20px 18px 14px;
+    max-width: 320px; width: 100%; box-shadow: 0 18px 50px rgba(0,0,0,.22);
+  }
+  .confirm-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+  .confirm-msg { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-bottom: 16px; text-align: center; }
+  .confirm-btns { display: flex; gap: 10px; }
+  .confirm-btns button {
+    flex: 1; border: none; border-radius: 10px; font-family: inherit;
+    font-size: 15px; font-weight: 600; padding: 11px 0; cursor: pointer;
+    background: var(--key-fn-bg); color: var(--accent);
+  }
+  .confirm-btns button:active { opacity: .8; }
+  .confirm-btns button.danger { background: var(--danger); color: #fff; }
+  .confirm-btns button.primary { background: var(--accent); color: #fff; }
+  #import-text {
+    width: 100%; border: 0.5px solid var(--hairline); border-radius: 10px;
+    background: var(--key-fn-bg); color: var(--text);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+    padding: 8px; resize: none; margin-bottom: 14px;
+    -webkit-user-select: text; user-select: text;
+  }
   /* ── 首次引导 ── */
   #onboard {
     position: fixed; inset: 0; z-index: 30; display: flex;
@@ -174,7 +255,7 @@
   }
   #onboard.show { opacity: 1; pointer-events: auto; }
   #onboard .card {
-    background: #fff; border-radius: 20px; padding: 26px 24px 20px;
+    background: var(--card-bg); border-radius: 20px; padding: 26px 24px 20px;
     max-width: 320px; width: 100%;
     box-shadow: 0 18px 50px rgba(0,0,0,.22);
   }
@@ -218,6 +299,9 @@
     <button class="icon-btn" id="btn-trash" title="删除选中" aria-label="删除选中">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
     </button>
+    <button class="icon-btn" id="btn-menu" title="更多" aria-label="更多">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
   </div>
 </header>
 
@@ -235,10 +319,53 @@
   <button class="sheet-cancel" id="sh-cancel">取消</button>
 </div>
 
+<div id="menu">
+  <div class="panel">
+    <div class="sheet-title">有数 <span id="menu-version"></span></div>
+    <button class="sheet-row" id="mn-export">导出画布…</button>
+    <button class="sheet-row" id="mn-import">导入画布…</button>
+    <button class="sheet-row" id="mn-clear">清空画布</button>
+    <button class="sheet-row" id="mn-help">使用帮助</button>
+    <button class="sheet-row" id="mn-about">关于有数</button>
+  </div>
+  <button class="sheet-cancel" id="mn-cancel">取消</button>
+</div>
+
+<div id="info">
+  <div class="panel">
+    <div class="sheet-title" id="info-title"></div>
+    <div class="info-body" id="info-body"></div>
+  </div>
+  <button class="sheet-cancel" id="info-close">关闭</button>
+</div>
+
+<div id="confirm-box">
+  <div class="card">
+    <div class="confirm-title" id="confirm-title">确认操作</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-btns">
+      <button id="confirm-no">取消</button>
+      <button id="confirm-yes" class="danger">清空</button>
+    </div>
+  </div>
+</div>
+
+<div id="import-box">
+  <div class="card">
+    <div class="confirm-title">导入画布</div>
+    <div class="confirm-msg">粘贴之前导出的画布数据（JSON）。导入会替换当前画布，可通过撤销恢复。</div>
+    <textarea id="import-text" rows="6" spellcheck="false" placeholder='{"app":"tydlig","nodes":[…]}'></textarea>
+    <div class="confirm-btns">
+      <button id="import-no">取消</button>
+      <button id="import-yes">导入</button>
+    </div>
+  </div>
+</div>
+
 <div id="onboard">
   <div class="card">
     <h1>有数</h1>
-    <div class="sub">画布计算器 · v0.2.0</div>
+    <div class="sub">画布计算器</div>
     <ol>
       <li><span class="no">1</span><span>点键盘，把数字放到画布上</span></li>
       <li><span class="no">2</span><span>选中数字 → 点运算符 → 再点另一个数字，结果自动连线</span></li>
@@ -302,27 +429,51 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.2.0';
+const VERSION = 'v0.3.0';
 
-/* ── 常量与配色 ── */
-const COLORS = {
+/* ── 常量与配色（跟随系统深色模式） ── */
+const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+const OP_SYM = { '+': '+', '-': '−', '*': '×', '/': '÷', '^': '^' };
+const BASE_FONT = 40;          // 数字基准字号（世界单位）
+const NODE_PAD = 14;           // 命中区呼吸边距
+const MAX_DIGITS = 12;         // 输入缓冲最大字符数（不含负号）
+
+const THEME_LIGHT = {
   paper: '#F6F5F1',
   num: '#1B1B1F',
   numEditing: '#0A84FF',
   res: '#0A84FF',
   resError: '#FF3B30',
   label: 'rgba(60,60,67,.55)',
-  wire: 'rgba(60,60,67,.30)',
+  wire: 'rgba(60,60,67,.42)',
   wirePending: 'rgba(10,132,255,.55)',
   ring: 'rgba(10,132,255,.95)',
   ringSoft: 'rgba(10,132,255,.35)',
   ghost: 'rgba(60,60,67,.35)',
 };
-const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
-const OP_SYM = { '+': '+', '-': '−', '*': '×', '/': '÷', '^': '^' };
-const BASE_FONT = 40;          // 数字基准字号（世界单位）
-const NODE_PAD = 14;           // 命中区呼吸边距
-const MAX_DIGITS = 12;         // 输入缓冲最大字符数（不含负号）
+const THEME_DARK = {
+  paper: '#1C1C1E',
+  num: '#F2F2F7',
+  numEditing: '#0A84FF',
+  res: '#0A84FF',
+  resError: '#FF453A',
+  label: 'rgba(235,235,245,.55)',
+  wire: 'rgba(235,235,245,.34)',
+  wirePending: 'rgba(10,132,255,.6)',
+  ring: 'rgba(10,132,255,.95)',
+  ringSoft: 'rgba(10,132,255,.4)',
+  ghost: 'rgba(235,235,245,.35)',
+};
+let COLORS = THEME_LIGHT;
+const themeMq = window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  COLORS = themeMq.matches ? THEME_DARK : THEME_LIGHT;
+  document.querySelector('meta[name="theme-color"]')
+    .setAttribute('content', COLORS.paper);
+}
+themeMq.addEventListener ? themeMq.addEventListener('change', applyTheme)
+                         : themeMq.addListener(applyTheme);
+applyTheme();
 
 /* ── 画布与相机 ── */
 const cv = document.getElementById('canvas');
@@ -844,10 +995,172 @@ function closeOnboard() {
 }
 document.getElementById('onboard-go').addEventListener('click', closeOnboard);
 
+/* ── 主菜单 / 信息 / 确认 / 导入 ── */
+const menuEl = document.getElementById('menu');
+const infoEl = document.getElementById('info');
+const confirmEl = document.getElementById('confirm-box');
+const importEl = document.getElementById('import-box');
+document.getElementById('menu-version').textContent = VERSION;
+
+function openPanel(el) {
+  sheetEl.classList.remove('show');
+  infoEl.classList.remove('show');
+  confirmEl.classList.remove('show');
+  importEl.classList.remove('show');
+  menuEl.classList.remove('show');
+  el.classList.add('show');
+  sheetBackdrop.classList.add('show');
+}
+function closeAllPanels() {
+  menuEl.classList.remove('show');
+  infoEl.classList.remove('show');
+  confirmEl.classList.remove('show');
+  importEl.classList.remove('show');
+  sheetEl.classList.remove('show');
+  sheetBackdrop.classList.remove('show');
+}
+document.getElementById('btn-menu').addEventListener('click', () => openPanel(menuEl));
+document.getElementById('mn-cancel').addEventListener('click', closeAllPanels);
+document.getElementById('info-close').addEventListener('click', closeAllPanels);
+
+function showInfo(title, html) {
+  document.getElementById('info-title').textContent = title;
+  document.getElementById('info-body').innerHTML = html;
+  openPanel(infoEl);
+}
+
+let confirmYesCb = null;
+function showConfirm(title, msg, yesLabel, onYes, danger) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const yes = document.getElementById('confirm-yes');
+  yes.textContent = yesLabel;
+  yes.className = danger ? 'danger' : 'primary';
+  confirmYesCb = onYes;
+  openPanel(confirmEl);
+}
+document.getElementById('confirm-no').addEventListener('click', closeAllPanels);
+document.getElementById('confirm-yes').addEventListener('click', () => {
+  const cb = confirmYesCb; confirmYesCb = null;
+  closeAllPanels();
+  if (cb) cb();
+});
+
+/* 导出：优先系统分享（Android），否则复制到剪贴板 */
+document.getElementById('mn-export').addEventListener('click', () => {
+  closeAllPanels();
+  if (editingId !== null) commitEdit();
+  const payload = JSON.stringify({ app: 'tydlig', v: 1, exportedAt: new Date().toISOString(), nodes, nextId });
+  if (window.Android && window.Android.share) {
+    window.Android.share(payload);
+    toast('已调起分享');
+  } else {
+    copyText(payload);
+  }
+});
+
+/* 导入 */
+document.getElementById('mn-import').addEventListener('click', () => {
+  document.getElementById('import-text').value = '';
+  openPanel(importEl);
+});
+document.getElementById('import-no').addEventListener('click', closeAllPanels);
+document.getElementById('import-yes').addEventListener('click', () => {
+  const txt = document.getElementById('import-text').value;
+  const err = importCanvas(txt);
+  if (err) { toast('导入失败：' + err); return; }
+  closeAllPanels();
+  fitView();
+  toast('导入成功');
+});
+function importCanvas(txt) {
+  let d;
+  try { d = JSON.parse(txt); } catch (e) { return '不是有效的 JSON'; }
+  if (!d || !Array.isArray(d.nodes)) return '缺少 nodes 数组';
+  const ids = new Set();
+  for (const n of d.nodes) {
+    if (!n || typeof n.id !== 'number' || (n.kind !== 'num' && n.kind !== 'res')) return '节点结构不正确';
+    if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) return '节点坐标不正确';
+    if (ids.has(n.id)) return '节点 id 重复';
+    ids.add(n.id);
+  }
+  for (const n of d.nodes) {
+    if (n.kind === 'num') {
+      if (!(n.value === null || Number.isFinite(n.value))) return '数字值不正确';
+    } else {
+      const okBin = ['+', '-', '*', '/', '^'].includes(n.op);
+      const okUn = ['sqrt', 'sq', 'inv', 'pct', 'sin', 'cos', 'tan', 'ln', 'log', 'neg'].includes(n.op);
+      const unary = n.b === null || n.b === undefined;
+      if (!(unary ? okUn : okBin)) return '不支持的运算符';
+      if (!ids.has(n.a) || (!unary && !ids.has(n.b))) return '连线引用不存在';
+      if (unary && n.b !== null && n.b !== undefined) return '一元节点结构不正确';
+    }
+  }
+  pushUndo();
+  nodes = d.nodes.map(n => {
+    const m = { ...n };
+    if (m.kind === 'res' && m.b === undefined) m.b = null;
+    return m;
+  });
+  nextId = d.nodes.reduce((m, n) => Math.max(m, n.id), 0) + 1;
+  selectedId = null; editingId = null; editBuf = ''; pendingOp = null;
+  evalAll(); scheduleSave(); syncToolbar();
+  return null;
+}
+
+/* 清空画布 */
+document.getElementById('mn-clear').addEventListener('click', () => {
+  if (nodes.length === 0) { closeAllPanels(); toast('画布已经是空的'); return; }
+  showConfirm('清空画布', `将移除画布上的全部 ${nodes.length} 个元素，可通过撤销恢复。`, '清空', () => {
+    pushUndo();
+    nodes = [];
+    selectedId = null; editingId = null; editBuf = ''; pendingOp = null;
+    evalAll(); scheduleSave(); syncToolbar();
+    toast('已清空 · 可撤销');
+  }, true);
+});
+
+/* 帮助 / 关于 */
+document.getElementById('mn-help').addEventListener('click', () => {
+  showInfo('使用帮助', `
+    <b>基本算法</b><br>
+    · 点键盘输入数字，它出现在画布中央，可随手拖动<br>
+    · 选中一个数字，点 <b>＋ − × ÷ ^</b>，再点另一个数字，结果自动连线生成<br>
+    · 结果也是数字——可以继续参加运算，长按可「断开连接」变回普通数字<br><br>
+    <b>实时联动</b><br>
+    · 双击数字修改数值，所有下游结果立刻重算<br>
+    · 除以零、负数开方等无意义运算显示红色「—」，修好输入即恢复<br><br>
+    <b>科学函数</b><br>
+    · 点键盘右上角 <b>fx</b> 展开：√ x² xʸ 1/x % sin cos tan ln log π e<br>
+    · 一元函数作用于选中数字；三角函数使用<b>弧度制</b><br><br>
+    <b>画布手势</b><br>
+    · 拖动空白平移 · 双指/滚轮缩放 · 工具栏 ⛶ 一键适应视图<br>
+    · 长按任意元素：复制数值 / 断开连接 / 删除<br><br>
+    <b>其他</b><br>
+    · 画布自动保存，重开应用继续上次计算<br>
+    · ⋯ 菜单里可以导出/导入画布数据、清空画布
+  `);
+});
+document.getElementById('mn-about').addEventListener('click', () => {
+  showInfo('关于有数', `
+    <b>有数</b> <span class="dim">${VERSION}</span><br>
+    一个画布计算器：数字摆在无限画布上，运算符把它们连起来，结果实时联动。<br><br>
+    灵感来自 iOS 应用《有数》(Tydlig)。本项目为独立的仿制实现，与原作者无关。<br><br>
+    <span class="dim">Pokem0n2 · github.com/Pokem0n2/tydlig-android<br>
+    WebView 单文件实现 · 离线可用 · 数据仅存本机</span>
+  `);
+});
+
 /* ── Android 返回键：优先收起面板 ── */
 window.__tydligBack = function () {
-  if (sheetEl.classList.contains('show')) { closeSheet(); return true; }
-  if (onboardEl.classList.contains('show')) { closeOnboard(); return true; }
+  for (const el of [sheetEl, menuEl, infoEl, confirmEl, importEl, onboardEl]) {
+    if (el.classList.contains('show')) {
+      if (el === sheetEl) closeSheet();
+      else if (el === onboardEl) closeOnboard();
+      else closeAllPanels();
+      return true;
+    }
+  }
   if (pendingOp) { cancelPending(); return true; }
   return false;
 };
@@ -1014,6 +1327,7 @@ function drawWire(a, b, style, dashed) {
   const dx = p2.x - p1.x, dy = p2.y - p1.y;
   const bend = 0.35;
   ctx.strokeStyle = style;
+  ctx.fillStyle = style;
   ctx.lineWidth = 1.5 / cam.s;
   ctx.setLineDash(dashed ? [6 / cam.s, 5 / cam.s] : []);
   ctx.beginPath();
@@ -1021,6 +1335,10 @@ function drawWire(a, b, style, dashed) {
   ctx.bezierCurveTo(p1.x + dx * bend, p1.y, p2.x - dx * bend, p2.y, p2.x, p2.y);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.beginPath();                                  // 端点小圆点
+  ctx.arc(p1.x, p1.y, 2.2 / cam.s, 0, Math.PI * 2);
+  ctx.arc(p2.x, p2.y, 2.2 / cam.s, 0, Math.PI * 2);
+  ctx.fill();
 }
 function roundedRect(x, y, w, h, r) {
   ctx.beginPath();
@@ -1144,7 +1462,14 @@ window.__TYDLIG_TEST__ = {
   key: onKey,
   undo, redo, fitView, deleteSelection,
   openSheet, closeSheet, closeOnboard, showOnboard,
+  openMenu: () => document.getElementById('btn-menu').click(),
+  closePanels: closeAllPanels,
+  importCanvas,
+  exportPayload: () => { if (editingId !== null) commitEdit(); return JSON.stringify({ app: 'tydlig', v: 1, nodes, nextId }); },
   get sheetOpen() { return sheetEl.classList.contains('show'); },
+  get menuOpen() { return menuEl.classList.contains('show'); },
+  get confirmOpen() { return confirmEl.classList.contains('show'); },
+  get dark() { return themeMq.matches; },
   sciOpen: () => sciGrid.classList.contains('open'),
   pressSci: k => sciGrid.querySelector(`[data-k="${k}"]`).click(),
   saved() {
