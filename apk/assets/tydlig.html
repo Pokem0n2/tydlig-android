@@ -429,7 +429,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.3.1';
+const VERSION = 'v0.3.2';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -583,12 +583,13 @@ function fitView() {
     x0 = Math.min(x0, b.x - b.w / 2); x1 = Math.max(x1, b.x + b.w / 2);
     y0 = Math.min(y0, b.y - b.h / 2); y1 = Math.max(y1, b.y + b.h / 2);
   }
-  const pad = 90;
-  const availW = W - pad * 2, availH = H - 220 - pad;   // 顶栏与键盘之间
-  const s = clampS(Math.min(availW / Math.max(x1 - x0, 1), availH / Math.max(y1 - y0, 1)));
-  cam.s = s;
+  const pad = 40, top = 120, bottom = 330;      // 顶栏与键盘（含 fx 展开余量）
+  const availW = W - pad * 2;
+  const availH = Math.max(200, H - top - bottom);
+  cam.s = clampS(Math.min(availW / Math.max(x1 - x0, 1), availH / Math.max(y1 - y0, 1), 1.6));
   cam.cx = (x0 + x1) / 2;
-  cam.cy = (y0 + y1) / 2 + 40 / s;                      // 视觉上移，给键盘留空间
+  // 内容中心落在 [top, H-bottom] 可视带的中点
+  cam.cy = (y0 + y1) / 2 + (bottom - top) / (2 * cam.s);
   scheduleSave();
 }
 
@@ -709,11 +710,20 @@ function unOpName(op) {
 }
 
 /* ── 节点操作 ── */
+function avoidClash(x, y) {
+  const dir = y > cam.cy ? -1 : 1;              // 下半屏向上逃逸，避免被键盘遮挡
+  const steps = [[0, 0], [36, 72], [-36, 144], [72, 216], [-72, 288], [108, 360], [144, 432], [180, 504]];
+  for (const [dx, dy] of steps) {
+    const tx = x + dx, ty = y + dy * dir;
+    if (!nodes.some(n => Math.abs(n.x - tx) < 90 && Math.abs(n.y - ty) < 70)) return { x: tx, y: ty };
+  }
+  return { x: x + 180, y: y + 504 * dir };
+}
 function spawnPos() {
   const base = toWorld(W / 2, H * 0.42);
   const offs = [[0, 0], [40, -30], [80, -60], [-40, 30], [120, -90], [-80, 60], [160, -120], [-120, 90]];
   const o = offs[spawnCounter++ % offs.length];
-  return { x: base.x + o[0], y: base.y + o[1] };
+  return avoidClash(base.x + o[0], base.y + o[1]);
 }
 function createNum(x, y) {
   pushUndo();
@@ -729,11 +739,7 @@ function createResult(op, aId, bId) {
   let x, y;
   if (b) { x = (a.x + b.x) / 2; y = (a.y + b.y) / 2 + 70; }
   else { x = a.x + 130; y = a.y + 10; }               // 一元函数放在右侧
-  for (let i = 0; i < 8; i++) {
-    const clash = nodes.some(n => Math.abs(n.x - x) < 90 && Math.abs(n.y - y) < 70);
-    if (!clash) break;
-    x += 30; y += 75;
-  }
+  ({ x, y } = avoidClash(x, y));
   const n = { id: nextId++, kind: 'res', op, a: aId, b: bId, x, y, value: null };
   nodes.push(n);
   evalAll();
@@ -805,7 +811,8 @@ function tapNumDigit(d) {
       const p = toScreen(first.x + 130, first.y + 30);
       const cx = Math.min(W - 60, Math.max(60, p.x)), cy = Math.min(H - 200, Math.max(120, p.y));
       const w = toWorld(cx, cy);
-      x = w.x; y = w.y;
+      const adj = avoidClash(w.x, w.y);
+      x = adj.x; y = adj.y;
       pendingOp.second = null; // 占位，创建后回填
     } else {
       const p = spawnPos(); x = p.x; y = p.y;
