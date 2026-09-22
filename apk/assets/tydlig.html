@@ -180,7 +180,7 @@
     border-bottom: 0.5px solid var(--hairline);
   }
   .sheet-close {
-    position: absolute; top: 12px; right: 10px; z-index: 2;
+    position: absolute; top: 9px; right: 10px; z-index: 2;
     width: 26px; height: 26px; border: none; border-radius: 50%;
     background: rgba(120,120,128,.16); color: var(--text-2);
     font-size: 12px; line-height: 1; cursor: pointer;
@@ -423,7 +423,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.4.6';
+const VERSION = 'v0.4.7';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -1185,8 +1185,8 @@ document.getElementById('mn-help').addEventListener('click', () => {
 document.getElementById('mn-about').addEventListener('click', () => {
   showInfo('关于 xCalc', `
     <b>xCalc</b> <span class="dim">${VERSION}</span><br>
-    一个画布计算器：数字摆在无限画布上，运算符把它们连起来，结果实时联动。<br><br>
-    灵感来自 iOS 应用《有数》(Tydlig)。本项目为独立的仿制实现，与原作者无关。<br><br>
+    一个画布计算器：<br>数字摆在无限画布上，运算符把它们连起来，结果实时联动。<br><br>
+    灵感来自 iOS 应用《有数》(Tydlig)。<br>本项目为独立的仿制实现，与原作者无关。<br><br>
     <span class="dim">Pokem0n2 · github.com/Pokem0n2/tydlig-android<br>
     WebView 单文件实现 · 离线可用 · 数据仅存本机</span>
   `);
