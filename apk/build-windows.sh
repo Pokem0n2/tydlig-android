@@ -42,11 +42,13 @@ javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$ANDROID_JAR" \
   "$APK_DIR/src/io/github/pokem0n2/tydlig/MainActivity.java"
 
 echo "=== 2. DEX ==="
+# 必须打包全部 class（含内部类 MainActivity$Bridge 等），否则运行时
+# NoClassDefFoundError 直接闪退
 java -cp "$D8_JAR" com.android.tools.r8.D8 --output "$BUILD_DIR/dex" \
   --min-api 21 \
   --lib "$ANDROID_JAR" \
   --release \
-  "$BUILD_DIR/obj/io/github/pokem0n2/tydlig/MainActivity.class"
+  "$BUILD_DIR/obj/io/github/pokem0n2/tydlig/"*.class
 
 echo "=== 3. aapt2 compile (resources) ==="
 "$AAPT2" compile -o "$BUILD_DIR/compiled/" --dir "$APK_DIR/res"

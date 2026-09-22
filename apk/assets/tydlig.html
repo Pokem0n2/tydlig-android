@@ -423,7 +423,7 @@
  *  无限画布：数字摆在画布上，运算符把它们连起来，结果实时联动。
  * ====================================================================== */
 
-const VERSION = 'v0.4.5';
+const VERSION = 'v0.4.6';
 
 /* ── 常量与配色（跟随系统深色模式） ── */
 const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -675,6 +675,9 @@ function displayText(n) {
 }
 function textInk(font, text) {    // 相对 alphabetic 基线的真实墨迹（精确、与字体度量无关）
   ctx.font = font;
+  // actualBoundingBox* 相对当前 textBaseline 返回；必须钉死基线再测量，
+  // 否则空画布引导（middle）等环境状态会污染度量，导致数字在线框内偏移
+  ctx.textBaseline = 'alphabetic';
   const m = ctx.measureText(text === '' ? '0' : text);
   const px = parseFloat(font.match(/ (\d+(?:\.\d+)?)px/)[1]) || 12;
   return { w: m.width,
@@ -704,12 +707,13 @@ function nodeBounds(n) {          // 命中检测用（留呼吸边距，隐形�
   const b = textBounds(n);
   return { x: b.x, y: b.y, w: b.w + NODE_PAD * 2, h: b.h + NODE_PAD * 2, labelH: b.labelH, px: b.px };
 }
-const RING_MARGIN = 3;            // 线框/引线与文字的边距（世界坐标，随缩放）
+const RING_MARGIN = 3;            // 线框/引线与文字的左右边距（世界坐标，随缩放）
+const RING_MARGIN_Y = 9;          // 上下边距 = 左右 ×3（默认缩放下约 1px vs 3px）
 function edgePoint(n, tx, ty) {   // 从文字盒边缘指向 (tx,ty)，落在 1px 线框上
   const b = textBounds(n);
   const dx = tx - b.x, dy = ty - b.y;
   if (dx === 0 && dy === 0) return { x: b.x, y: b.y };
-  const hw = b.w / 2 + RING_MARGIN, hh = b.h / 2 + RING_MARGIN;
+  const hw = b.w / 2 + RING_MARGIN, hh = b.h / 2 + RING_MARGIN_Y;
   const t = Math.min(hw / Math.abs(dx || 1e-9), hh / Math.abs(dy || 1e-9));
   return { x: b.x + dx * t, y: b.y + dy * t };
 }
@@ -1403,8 +1407,8 @@ function drawNode(n, t) {
     ctx.strokeStyle = isPendingFirst ? COLORS.ringSoft : COLORS.ring;
     ctx.globalAlpha = pulse;
     ctx.lineWidth = 2 / cam.s;
-    roundedRect(b.x - b.w / 2 - RING_MARGIN, b.y - b.h / 2 - RING_MARGIN,
-                b.w + RING_MARGIN * 2, b.h + RING_MARGIN * 2, 5);
+    roundedRect(b.x - b.w / 2 - RING_MARGIN, b.y - b.h / 2 - RING_MARGIN_Y,
+                b.w + RING_MARGIN * 2, b.h + RING_MARGIN_Y * 2, 5);
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
@@ -1489,6 +1493,7 @@ function render(t) {
     ctx.font = `400 13px ${FONT_STACK}`;
     ctx.fillStyle = COLORS.hint2;
     ctx.fillText('选中数字后点运算符，再点另一个数字，结果会实时联动', W / 2, H * 0.40 + 26);
+    ctx.textBaseline = 'alphabetic';   // 恢复基线，避免 middle 泄漏到后续帧的测量/绘制
   }
 
   requestAnimationFrame(render);
